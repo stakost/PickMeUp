@@ -50,6 +50,7 @@
 		view			: 'days',
 		calendars		: 1,
 		format			: 'd-m-Y',
+		formatTitle		: 'B Y',
 		position		: 'bottom',
 		trigger_event	: 'click',
 		class_name		: '',
@@ -62,7 +63,6 @@
 		before_show		: function () {return true;},
 		show			: function () {return true;},
 		hide			: function () {return true;},
-		fill			: function () {return true;},
 		locale			: {
 			days		: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
 			daysShort	: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -95,7 +95,7 @@
 			days	: function (days) {
 				var result	= '';
 				for (var i = 0; i < 42; ++i) {
-					result	+= '<div class="' + days[i].class_name + ' pmu-button">' + days[i].text + '</div>'
+					result	+= '<div class="' + days[i].class_name + ' pmu-button" data-num="' + days[i].text + '">' + days[i].text + '</div>'
 				}
 				return '<div class="pmu-days">' + result + '</div>';
 			},
@@ -140,7 +140,7 @@
 				header = date.getFullYear();
 			} else if (pickmeup.hasClass('pmu-view-days')) {
 				date.addMonths(i - current_cal);
-				header = formatDate(date, 'B, Y', options.locale);
+				header = formatDate(date, options.formatTitle, options.locale);
 			}
 			instance
 				.find('.pmu-month')
@@ -177,7 +177,7 @@
 					val			= date.valueOf(),
 					disabled	= (options.min && options.min > date) || (options.max && options.max < date);
 				if (
-					!disabled &&
+                    (!disabled || (val >= options.date[0])) &&
 					(
 						from_user.selected ||
 						options.date == val ||
@@ -189,6 +189,17 @@
 				) {
 					day.class_name.push('pmu-selected');
 				}
+                if (options.mode == 'range') {
+                    if (val == options.date[0]) {
+                        day.class_name.push('pmu-selected_start');
+                    }
+                    if (val <= options.date[1] && (val >= options.date[1] - 86399000)) {
+                        day.class_name.push('pmu-selected_end');
+                    }
+                }
+                else if (options.date == val) {
+                    day.class_name.push('pmu-selected_current');
+                }
 				if (val == today) {
 					day.class_name.push('pmu-today');
 				}
@@ -211,7 +222,6 @@
 			html	= tpl.months(data) + html;
 			instance.append(html);
 		}
-		options.fill.apply(this);
 	}
 	function parseDate (date, format, separator) {
 		if (date.constructor == Date) {
@@ -433,7 +443,11 @@
 							break;
 						case 'range':
 							if (!options.lastSel) {
-								options.date[0]	= (current_date.setHours(0,0,0,0)).valueOf();
+                                if (options.min > options.date[0]) {
+                                    options.date[0] = options.date[0];
+                                } else {
+                                    options.date[0]	= (current_date.setHours(0,0,0,0)).valueOf();
+                                }
 							}
 							val				= (current_date.setHours(23,59,59,0)).valueOf();
 							if (val < options.date[0]) {
@@ -744,6 +758,7 @@
 					]
 				});
 			}
+//            options.pickmeup = pickmeup;
 			$this.data('pickmeup-options', options);
 			for (i in options) {
 				if ($.inArray(i, ['render', 'change', 'before_show', 'show', 'hide']) != -1) {
